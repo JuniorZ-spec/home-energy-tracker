@@ -113,7 +113,7 @@ pipeline {
       echo "Pipeline succeeded — build ${IMAGE_TAG} deployed to ${EC2_HOST}"
     }
     failure {
-      echo "Pipeline failed — check the stage logs above"
+      echo "Pipeline failed — check the stage logs"
     }
     always {
       sh 'docker system prune -f || true'
