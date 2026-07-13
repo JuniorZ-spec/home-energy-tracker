@@ -46,6 +46,10 @@ logs/
 !user-service/.mvn/wrapper/
 !user-service/.mvn/wrapper/maven-wrapper.properties
 !user-service/.mvn/wrapper/maven-wrapper.jar
+!device-service/.mvn/
+!device-service/.mvn/wrapper/
+!device-service/.mvn/wrapper/maven-wrapper.properties
+!device-service/.mvn/wrapper/maven-wrapper.jar
 .gradle/
 
 #Excluded dirs
