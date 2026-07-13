@@ -42,6 +42,10 @@ logs/
 
 ### Maven & Gradle ###
 .mvn/
+!user-service/.mvn/
+!user-service/.mvn/wrapper/
+!user-service/.mvn/wrapper/maven-wrapper.properties
+!user-service/.mvn/wrapper/maven-wrapper.jar
 .gradle/
 
 #Excluded dirs
