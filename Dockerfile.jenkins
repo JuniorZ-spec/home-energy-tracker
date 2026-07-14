@@ -1,0 +1,16 @@
+FROM jenkins/jenkins:lts-jdk21
+
+USER root
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        curl \
+        ca-certificates \
+        gnupg2 \
+        apt-transport-https \
+        docker.io \
+        docker-compose-plugin \
+        awscli \
+    && rm -rf /var/lib/apt/lists/*
+
+USER jenkins
