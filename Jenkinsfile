@@ -2,7 +2,6 @@ pipeline {
   agent any
 
   environment {
-    DOCKER_BUILDKIT = '1'
     AWS_REGION = 'eu-west-3'
     AWS_ACCOUNT_ID = '915993062361'
     ECR_REGISTRY = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
