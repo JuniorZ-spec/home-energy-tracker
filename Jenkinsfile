@@ -82,7 +82,7 @@ pipeline {
               def repo = "${ECR_REGISTRY}/home-energy-tracker/${svc}"
               retry(3) {
                 sh """
-                  DOCKER_BUILDKIT=1 docker build -t ${repo}:${IMAGE_TAG} -t ${repo}:latest ${svc}
+                  docker buildx build --load -t ${repo}:${IMAGE_TAG} -t ${repo}:latest ${svc}
                 """
               }
               retry(3) {
