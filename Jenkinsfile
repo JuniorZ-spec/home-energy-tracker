@@ -2,6 +2,7 @@ pipeline {
   agent any
 
   environment {
+    DOCKER_BUILDKIT = '1'
     AWS_REGION = 'eu-west-3'
     AWS_ACCOUNT_ID = '915993062361'
     ECR_REGISTRY = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
@@ -29,12 +30,27 @@ pipeline {
             'api-gateway'
           ]
 
-          for (svc in services) {
-            dir(svc) {
-              echo "Building ${svc}..."
-              sh 'chmod +x mvnw && ./mvnw -B -q -DskipTests package'
+          def buildSteps = [:]
+          for (int i = 0; i < services.size(); i++) {
+            def svc = services[i]
+            buildSteps[svc] = {
+              dir(svc) {
+                echo "Building ${svc}..."
+                retry(3) {
+                  sh '''
+                    if [ -x ./mvnw ] && [ -f ./.mvn/wrapper/maven-wrapper.properties ]; then
+                      chmod +x mvnw
+                      ./mvnw -B -q -DskipTests package
+                    else
+                      mvn -B -q -DskipTests package
+                    fi
+                  '''
+                }
+              }
             }
           }
+
+          parallel buildSteps
         }
       }
     }
@@ -64,11 +80,17 @@ pipeline {
 
             for (svc in services) {
               def repo = "${ECR_REGISTRY}/home-energy-tracker/${svc}"
-              sh """
-                docker build -t ${repo}:${IMAGE_TAG} -t ${repo}:latest ${svc}
-                docker push ${repo}:${IMAGE_TAG}
-                docker push ${repo}:latest
-              """
+              retry(3) {
+                sh """
+                  docker build -t ${repo}:${IMAGE_TAG} -t ${repo}:latest ${svc}
+                """
+              }
+              retry(3) {
+                sh """
+                  docker push ${repo}:${IMAGE_TAG}
+                  docker push ${repo}:latest
+                """
+              }
             }
           }
         }
@@ -77,9 +99,13 @@ pipeline {
 
     stage('Deploy to EC2') {
       steps {
-        sshagent(credentials: ['ec2-ssh-key']) {
+        withCredentials([sshUserPrivateKey(
+          credentialsId: 'ec2-ssh-key',
+          keyFileVariable: 'SSH_KEY',
+          usernameVariable: 'SSH_USER'
+        )]) {
           sh """
-            scp -o StrictHostKeyChecking=no docker-compose.prod.yml ubuntu@${EC2_HOST}:~/docker-compose.prod.yml
+            scp -o StrictHostKeyChecking=no -i ${SSH_KEY} docker-compose.prod.yml ${SSH_USER}@${EC2_HOST}:~/docker-compose.prod.yml
           """
 
           withCredentials([usernamePassword(
@@ -88,7 +114,7 @@ pipeline {
             passwordVariable: 'AWS_SECRET_ACCESS_KEY'
           )]) {
             sh """
-              ssh -o StrictHostKeyChecking=no ubuntu@${EC2_HOST} '
+              ssh -o StrictHostKeyChecking=no -i ${SSH_KEY} ${SSH_USER}@${EC2_HOST} '
                 aws ecr get-login-password --region ${AWS_REGION} 2>/dev/null || \
                 echo "${AWS_SECRET_ACCESS_KEY}" | docker login --username AWS --password-stdin ${ECR_REGISTRY}
               '
@@ -96,7 +122,7 @@ pipeline {
           }
 
           sh """
-            ssh -o StrictHostKeyChecking=no ubuntu@${EC2_HOST} '
+            ssh -o StrictHostKeyChecking=no -i ${SSH_KEY} ${SSH_USER}@${EC2_HOST} '
               export IMAGE_TAG=${IMAGE_TAG}
               export ECR_REGISTRY=${ECR_REGISTRY}
               docker compose -f docker-compose.prod.yml pull
@@ -116,7 +142,7 @@ pipeline {
       echo "Pipeline failed — check the stage logs above"
     }
     always {
-      sh 'docker system prune -f || true'
+      echo 'Pipeline finished'
     }
   }
 }
