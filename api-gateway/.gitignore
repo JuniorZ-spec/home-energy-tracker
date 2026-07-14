@@ -43,8 +43,8 @@ logs/
 
 ### Maven & Gradle ###
 .mvn/
-!api-gateway/.mvn/
-!api-gateway/.mvn/wrapper/
-!api-gateway/.mvn/wrapper/maven-wrapper.properties
-!api-gateway/.mvn/wrapper/maven-wrapper.jar
+!.mvn/
+!.mvn/wrapper/
+!.mvn/wrapper/maven-wrapper.properties
+!.mvn/wrapper/maven-wrapper.jar
 .gradle/
