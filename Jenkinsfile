@@ -29,27 +29,21 @@ pipeline {
             'api-gateway'
           ]
 
-          def buildSteps = [:]
-          for (int i = 0; i < services.size(); i++) {
-            def svc = services[i]
-            buildSteps[svc] = {
-              dir(svc) {
-                echo "Building ${svc}..."
-                retry(3) {
-                  sh '''
-                    if [ -x ./mvnw ] && [ -f ./.mvn/wrapper/maven-wrapper.properties ]; then
-                      chmod +x mvnw
-                      ./mvnw -B -q -DskipTests package
-                    else
-                      mvn -B -q -DskipTests package
-                    fi
-                  '''
-                }
+          for (svc in services) {
+            dir(svc) {
+              echo "Building ${svc}..."
+              retry(3) {
+                sh '''
+                  if [ -x ./mvnw ] && [ -f ./.mvn/wrapper/maven-wrapper.properties ]; then
+                    chmod +x mvnw
+                    ./mvnw -B -q -DskipTests package
+                  else
+                    mvn -B -q -DskipTests package
+                  fi
+                '''
               }
             }
           }
-
-          parallel buildSteps
         }
       }
     }
