@@ -5,7 +5,7 @@ pipeline {
     AWS_REGION = 'eu-west-3'
     AWS_ACCOUNT_ID = '915993062361'
     ECR_REGISTRY = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
-    EC2_HOST = '35.180.190.123'
+    EC2_HOST = '35.180.172.44'
     IMAGE_TAG = "${env.BUILD_NUMBER}"
   }
 
