@@ -98,7 +98,8 @@ pipeline {
           usernameVariable: 'SSH_USER'
         )]) {
           sh """
-            scp -o StrictHostKeyChecking=no -i ${SSH_KEY} docker-compose.prod.yml ${SSH_USER}@${EC2_HOST}:~/docker-compose.prod.yml
+            ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 -i ${SSH_KEY} ${SSH_USER}@${EC2_HOST} 'echo SSH_OK'
+            scp -o StrictHostKeyChecking=no -o ConnectTimeout=10 -i ${SSH_KEY} docker-compose.prod.yml ${SSH_USER}@${EC2_HOST}:~/docker-compose.prod.yml
           """
 
           withCredentials([usernamePassword(
@@ -107,7 +108,7 @@ pipeline {
             passwordVariable: 'AWS_SECRET_ACCESS_KEY'
           )]) {
             sh """
-              ssh -o StrictHostKeyChecking=no -i ${SSH_KEY} ${SSH_USER}@${EC2_HOST} '
+              ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 -i ${SSH_KEY} ${SSH_USER}@${EC2_HOST} '
                 export AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID}"
                 export AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY}"
                 export AWS_DEFAULT_REGION="${AWS_REGION}"
