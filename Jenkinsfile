@@ -142,6 +142,7 @@ pipeline {
     }
     always {
       echo 'Pipeline finished'
+      echo 'Deployment step completed'
     }
   }
 }
