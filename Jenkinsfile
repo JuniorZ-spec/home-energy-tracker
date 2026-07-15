@@ -108,8 +108,11 @@ pipeline {
           )]) {
             sh """
               ssh -o StrictHostKeyChecking=no -i ${SSH_KEY} ${SSH_USER}@${EC2_HOST} '
-                aws ecr get-login-password --region ${AWS_REGION} 2>/dev/null || \
-                echo "${AWS_SECRET_ACCESS_KEY}" | docker login --username AWS --password-stdin ${ECR_REGISTRY}
+                if ! command -v aws >/dev/null 2>&1; then
+                  sudo apt-get update -y
+                  sudo apt-get install -y awscli
+                fi
+                aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_REGISTRY}
               '
             """
           }
