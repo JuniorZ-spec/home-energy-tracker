@@ -108,6 +108,9 @@ pipeline {
           )]) {
             sh """
               ssh -o StrictHostKeyChecking=no -i ${SSH_KEY} ${SSH_USER}@${EC2_HOST} '
+                export AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID}"
+                export AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY}"
+                export AWS_DEFAULT_REGION="${AWS_REGION}"
                 if ! command -v aws >/dev/null 2>&1; then
                   sudo apt-get update -y
                   sudo apt-get install -y awscli
