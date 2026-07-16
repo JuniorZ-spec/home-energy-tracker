@@ -104,6 +104,10 @@ resource "aws_instance" "home_energy_tracker" {
     volume_type = "gp3"
   }
 
+  lifecycle {
+    ignore_changes = [ami]
+  }
+
   user_data = <<-EOF
               #!/bin/bash
               apt-get update -y
@@ -124,6 +128,17 @@ resource "aws_instance" "home_energy_tracker" {
 
   tags = {
     Name    = "home-energy-tracker-prod"
+    Project = "home-energy-tracker"
+  }
+}
+
+# --- Elastic IP (keeps a stable public IP across stop/start) ---
+resource "aws_eip" "home_energy_tracker" {
+  instance = aws_instance.home_energy_tracker.id
+  domain   = "vpc"
+
+  tags = {
+    Name    = "home-energy-tracker-eip"
     Project = "home-energy-tracker"
   }
 }
