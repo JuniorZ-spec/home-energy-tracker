@@ -77,6 +77,36 @@ resource "aws_key_pair" "deployer" {
   public_key = file(var.public_key_path)
 }
 
+# --- IAM role for SSM (deploy over HTTPS instead of SSH) ---
+resource "aws_iam_role" "ssm_role" {
+  name = "home-energy-tracker-ssm-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Action = "sts:AssumeRole"
+      Effect = "Allow"
+      Principal = {
+        Service = "ec2.amazonaws.com"
+      }
+    }]
+  })
+
+  tags = {
+    Project = "home-energy-tracker"
+  }
+}
+
+resource "aws_iam_role_policy_attachment" "ssm_core" {
+  role       = aws_iam_role.ssm_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+}
+
+resource "aws_iam_instance_profile" "ssm_profile" {
+  name = "home-energy-tracker-ssm-profile"
+  role = aws_iam_role.ssm_role.name
+}
+
 # --- Ubuntu 22.04 LTS AMI ---
 data "aws_ami" "ubuntu" {
   most_recent = true
@@ -98,6 +128,7 @@ resource "aws_instance" "home_energy_tracker" {
   instance_type          = var.instance_type
   key_name               = aws_key_pair.deployer.key_name
   vpc_security_group_ids = [aws_security_group.home_energy_tracker_sg.id]
+  iam_instance_profile   = aws_iam_instance_profile.ssm_profile.name
 
   root_block_device {
     volume_size = 30
