@@ -10,6 +10,31 @@ A **microservices reference implementation** for monitoring and reasoning about 
 
 ---
 
+## About this fork
+
+> **Attribution:** This repository is a fork of [**leetjourney/home-energy-tracker**](https://github.com/leetjourney/home-energy-tracker), used with the original author's permission for **educational purposes**. All credit for the core microservices design, the Spring Boot implementation, and the accompanying video walkthrough belongs to **leetjourney** — see [Learning resources](#learning-resources).
+
+I forked this project to practice **DevOps** on top of an already realistic, multi-service application instead of a toy example. It's a good learning target because:
+
+- It's a genuine **microservices system** (7 services) with real inter-service dependencies (Kafka, MySQL, InfluxDB), not a single "hello world" app — so infrastructure and deployment decisions actually matter.
+- It already ships with **observability** (Prometheus/Grafana), **security** (Keycloak/OAuth2), and **resilience** (circuit breakers) wired into the application layer, giving infrastructure work real signals to hook into (metrics endpoints, health checks, ports to expose or restrict).
+- It's fully **containerized** via Docker Compose, which is a natural stepping stone toward provisioning it on real cloud infrastructure.
+
+### What I added on top (DevOps focus)
+
+The application code, the Compose stack, and the observability wiring are leetjourney's original work. On top of that, I added:
+
+- **`Terraform/`** — Infrastructure as Code to provision the stack on **AWS**:
+  - `main.tf` — an EC2 instance (latest Ubuntu AMI, `t3.small`, 30 GB `gp3` root volume) with a `user_data` bootstrap script that installs **Docker** and the **Docker Compose plugin** on first boot, so the existing `docker-compose.yml` can run unmodified on the instance.
+  - A dedicated **security group** exposing only what's needed: SSH (22) and the observability/admin ports (Grafana 3000, Prometheus 9090, Kafka UI 8070, Mailpit 8025, Keycloak 8091) restricted to my own IP, with only the **API Gateway** (9000) open publicly — a basic least-privilege network boundary instead of opening everything.
+  - An `aws_key_pair` resource wired to a local SSH public key, and a `data "aws_ami"` lookup so the instance always boots the latest Ubuntu image instead of a hardcoded, staleness-prone AMI ID.
+  - `variable.tf` / `terraform.tfvars` — parameterized region (`eu-west-3` by default), instance type, and the operator's IP/CIDR, so the same configuration is reusable without editing `main.tf`.
+  - `outputs.tf` — exposes the instance's public IP, instance ID, and a ready-to-use `ssh` command after `terraform apply`.
+
+The practical exercise here is turning a "runs on my machine via Compose" project into something provisioned, reproducible, and deployable to a real cloud environment with `terraform init/plan/apply`, without having to touch the application code.
+
+---
+
 ## Project overview
 
 **Home Energy Tracker** models how a real product might collect **power (watts)** and **timestamps** from smart plugs or meters, aggregate that data for dashboards and billing-style views, and notify residents when consumption crosses thresholds.
