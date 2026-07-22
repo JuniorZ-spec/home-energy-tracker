@@ -1,5 +1,5 @@
 location        = "France Central"
-vm_size         = "Standard_B2s"
+vm_size         = "Standard_B1s"
 admin_username  = "azureuser"
-public_key_path = "~/.ssh/home-energy-tracker-key.pub"
+public_key_path = "~/.ssh/home-energy-tracker-azure-key.pub"
 my_ip_cidr      = "0.0.0.0/0"

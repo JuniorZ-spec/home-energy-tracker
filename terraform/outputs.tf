@@ -10,5 +10,5 @@ output "vm_id" {
 
 output "ssh_command" {
   description = "Command to SSH into the instance"
-  value       = "ssh -i ~/.ssh/home-energy-tracker-key ${var.admin_username}@${azurerm_public_ip.home_energy_tracker.ip_address}"
+  value       = "ssh -i ~/.ssh/home-energy-tracker-azure-key ${var.admin_username}@${azurerm_public_ip.home_energy_tracker.ip_address}"
 }
