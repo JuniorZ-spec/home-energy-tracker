@@ -2,10 +2,10 @@ pipeline {
   agent any
 
   environment {
-    AWS_REGION = 'eu-west-3'
-    AWS_ACCOUNT_ID = '915993062361'
-    ECR_REGISTRY = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
-    EC2_HOST = '15.224.158.23'
+    // Login server of the Azure Container Registry, e.g. homeenergytracker.azurecr.io
+    ACR_REGISTRY = 'CHANGE_ME.azurecr.io'
+    // Public IP of the Azure VM — from `terraform output instance_public_ip` in Terraform/
+    AZURE_VM_HOST = 'CHANGE_ME'
     IMAGE_TAG = "${env.BUILD_NUMBER}"
   }
 
@@ -62,17 +62,16 @@ pipeline {
           ]
 
           withCredentials([usernamePassword(
-            credentialsId: 'aws-credentials',
-            usernameVariable: 'AWS_ACCESS_KEY_ID',
-            passwordVariable: 'AWS_SECRET_ACCESS_KEY'
+            credentialsId: 'acr-credentials',
+            usernameVariable: 'ACR_USERNAME',
+            passwordVariable: 'ACR_PASSWORD'
           )]) {
             sh """
-              aws ecr get-login-password --region ${AWS_REGION} \
-              | docker login --username AWS --password-stdin ${ECR_REGISTRY}
+              echo "${ACR_PASSWORD}" | docker login ${ACR_REGISTRY} --username ${ACR_USERNAME} --password-stdin
             """
 
             for (svc in services) {
-              def repo = "${ECR_REGISTRY}/home-energy-tracker/${svc}"
+              def repo = "${ACR_REGISTRY}/home-energy-tracker/${svc}"
               retry(3) {
                 sh """
                   docker build -t ${repo}:${IMAGE_TAG} -t ${repo}:latest ${svc}
@@ -90,41 +89,34 @@ pipeline {
       }
     }
 
-    stage('Deploy to EC2') {
+    stage('Deploy to Azure VM') {
       steps {
         withCredentials([sshUserPrivateKey(
-          credentialsId: 'ec2-ssh-key',
+          credentialsId: 'azure-vm-ssh-key',
           keyFileVariable: 'SSH_KEY',
           usernameVariable: 'SSH_USER'
         )]) {
           sh """
-            ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 -i ${SSH_KEY} ${SSH_USER}@${EC2_HOST} 'echo SSH_OK'
-            scp -o StrictHostKeyChecking=no -o ConnectTimeout=10 -i ${SSH_KEY} docker-compose.prod.yml ${SSH_USER}@${EC2_HOST}:~/docker-compose.prod.yml
+            ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 -i ${SSH_KEY} ${SSH_USER}@${AZURE_VM_HOST} 'echo SSH_OK'
+            scp -o StrictHostKeyChecking=no -o ConnectTimeout=10 -i ${SSH_KEY} docker-compose.prod.yml ${SSH_USER}@${AZURE_VM_HOST}:~/docker-compose.prod.yml
           """
 
           withCredentials([usernamePassword(
-            credentialsId: 'aws-credentials',
-            usernameVariable: 'AWS_ACCESS_KEY_ID',
-            passwordVariable: 'AWS_SECRET_ACCESS_KEY'
+            credentialsId: 'acr-credentials',
+            usernameVariable: 'ACR_USERNAME',
+            passwordVariable: 'ACR_PASSWORD'
           )]) {
             sh """
-              ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 -i ${SSH_KEY} ${SSH_USER}@${EC2_HOST} '
-                export AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID}"
-                export AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY}"
-                export AWS_DEFAULT_REGION="${AWS_REGION}"
-                if ! command -v aws >/dev/null 2>&1; then
-                  sudo apt-get update -y
-                  sudo apt-get install -y awscli
-                fi
-                aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_REGISTRY}
+              ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 -i ${SSH_KEY} ${SSH_USER}@${AZURE_VM_HOST} '
+                echo "${ACR_PASSWORD}" | docker login ${ACR_REGISTRY} --username ${ACR_USERNAME} --password-stdin
               '
             """
           }
 
           sh """
-            ssh -o StrictHostKeyChecking=no -i ${SSH_KEY} ${SSH_USER}@${EC2_HOST} '
+            ssh -o StrictHostKeyChecking=no -i ${SSH_KEY} ${SSH_USER}@${AZURE_VM_HOST} '
               export IMAGE_TAG=${IMAGE_TAG}
-              export ECR_REGISTRY=${ECR_REGISTRY}
+              export ACR_REGISTRY=${ACR_REGISTRY}
               docker compose -f docker-compose.prod.yml pull
               docker compose -f docker-compose.prod.yml up -d
             '
@@ -136,7 +128,7 @@ pipeline {
 
   post {
     success {
-      echo "Pipeline succeeded — build ${IMAGE_TAG} deployed to ${EC2_HOST}"
+      echo "Pipeline succeeded — build ${IMAGE_TAG} deployed to ${AZURE_VM_HOST}"
     }
     failure {
       echo "Pipeline failed — check the stage logs above"

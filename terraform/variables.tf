@@ -1,13 +1,19 @@
-variable "aws_region" {
-  description = "AWS region to deploy into"
+variable "location" {
+  description = "Azure region to deploy into"
   type        = string
-  default     = "eu-west-3" # Paris
+  default     = "France Central"
 }
 
-variable "instance_type" {
-  description = "EC2 instance type"
+variable "vm_size" {
+  description = "Azure VM size"
   type        = string
-  default     = "t3.small" # 2GB RAM - needed for 7 JVM services + Kafka + MySQL + InfluxDB + Keycloak
+  default     = "Standard_B2s" # 2 vCPU / 4GB RAM - needed for 7 JVM services + Kafka + MySQL + InfluxDB + Keycloak
+}
+
+variable "admin_username" {
+  description = "Admin username for the VM"
+  type        = string
+  default     = "azureuser"
 }
 
 variable "public_key_path" {

@@ -1,145 +1,193 @@
-# --- Security Group ---
-resource "aws_security_group" "home_energy_tracker_sg" {
-  name        = "home-energy-tracker-sg"
-  description = "Security group for Home Energy Tracker EC2 instance"
-
-  ingress {
-    description = "SSH"
-    from_port   = 22
-    to_port     = 22
-    protocol    = "tcp"
-    cidr_blocks = [var.my_ip_cidr]
-  }
-
-  ingress {
-    description = "API Gateway"
-    from_port   = 9000
-    to_port     = 9000
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  ingress {
-    description = "Grafana"
-    from_port   = 3000
-    to_port     = 3000
-    protocol    = "tcp"
-    cidr_blocks = [var.my_ip_cidr]
-  }
-
-  ingress {
-    description = "Prometheus"
-    from_port   = 9090
-    to_port     = 9090
-    protocol    = "tcp"
-    cidr_blocks = [var.my_ip_cidr]
-  }
-
-  ingress {
-    description = "Kafka UI"
-    from_port   = 8070
-    to_port     = 8070
-    protocol    = "tcp"
-    cidr_blocks = [var.my_ip_cidr]
-  }
-
-  ingress {
-    description = "Mailpit"
-    from_port   = 8025
-    to_port     = 8025
-    protocol    = "tcp"
-    cidr_blocks = [var.my_ip_cidr]
-  }
-
-  ingress {
-    description = "Keycloak"
-    from_port   = 8091
-    to_port     = 8091
-    protocol    = "tcp"
-    cidr_blocks = [var.my_ip_cidr]
-  }
-
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  tags = {
-    Name    = "home-energy-tracker-sg"
-    Project = "home-energy-tracker"
-  }
-}
-
-resource "aws_key_pair" "deployer" {
-  key_name   = "home-energy-tracker-key"
-  public_key = file(var.public_key_path)
-}
-
-# --- IAM role for SSM (deploy over HTTPS instead of SSH) ---
-resource "aws_iam_role" "ssm_role" {
-  name = "home-energy-tracker-ssm-role"
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [{
-      Action = "sts:AssumeRole"
-      Effect = "Allow"
-      Principal = {
-        Service = "ec2.amazonaws.com"
-      }
-    }]
-  })
+# --- Resource group ---
+resource "azurerm_resource_group" "home_energy_tracker" {
+  name     = "home-energy-tracker-rg"
+  location = var.location
 
   tags = {
     Project = "home-energy-tracker"
   }
 }
 
-resource "aws_iam_role_policy_attachment" "ssm_core" {
-  role       = aws_iam_role.ssm_role.name
-  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+# --- Network ---
+resource "azurerm_virtual_network" "home_energy_tracker" {
+  name                = "home-energy-tracker-vnet"
+  address_space       = ["10.0.0.0/16"]
+  location            = azurerm_resource_group.home_energy_tracker.location
+  resource_group_name = azurerm_resource_group.home_energy_tracker.name
 }
 
-resource "aws_iam_instance_profile" "ssm_profile" {
-  name = "home-energy-tracker-ssm-profile"
-  role = aws_iam_role.ssm_role.name
+resource "azurerm_subnet" "home_energy_tracker" {
+  name                 = "home-energy-tracker-subnet"
+  resource_group_name  = azurerm_resource_group.home_energy_tracker.name
+  virtual_network_name = azurerm_virtual_network.home_energy_tracker.name
+  address_prefixes     = ["10.0.1.0/24"]
 }
 
-# --- Ubuntu 22.04 LTS AMI ---
-data "aws_ami" "ubuntu" {
-  most_recent = true
-  owners      = ["099720109477"]
+# --- Public IP (Static SKU, stable across stop/start) ---
+resource "azurerm_public_ip" "home_energy_tracker" {
+  name                = "home-energy-tracker-ip"
+  location            = azurerm_resource_group.home_energy_tracker.location
+  resource_group_name = azurerm_resource_group.home_energy_tracker.name
+  allocation_method   = "Static"
+  sku                 = "Standard"
 
-  filter {
-    name   = "name"
-    values = ["ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"]
-  }
-
-  filter {
-    name   = "virtualization-type"
-    values = ["hvm"]
+  tags = {
+    Project = "home-energy-tracker"
   }
 }
 
-resource "aws_instance" "home_energy_tracker" {
-  ami                    = data.aws_ami.ubuntu.id
-  instance_type          = var.instance_type
-  key_name               = aws_key_pair.deployer.key_name
-  vpc_security_group_ids = [aws_security_group.home_energy_tracker_sg.id]
-  iam_instance_profile   = aws_iam_instance_profile.ssm_profile.name
+# --- Network Security Group ---
+resource "azurerm_network_security_group" "home_energy_tracker" {
+  name                = "home-energy-tracker-nsg"
+  location            = azurerm_resource_group.home_energy_tracker.location
+  resource_group_name = azurerm_resource_group.home_energy_tracker.name
 
-  root_block_device {
-    volume_size = 30
-    volume_type = "gp3"
+  security_rule {
+    name                       = "SSH"
+    priority                   = 100
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "22"
+    source_address_prefix      = var.my_ip_cidr
+    destination_address_prefix = "*"
   }
 
-  lifecycle {
-    ignore_changes = [ami]
+  security_rule {
+    name                       = "ApiGateway"
+    priority                   = 110
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "9000"
+    source_address_prefix      = "*"
+    destination_address_prefix = "*"
   }
 
-  user_data = <<-EOF
+  security_rule {
+    name                       = "Grafana"
+    priority                   = 120
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "3000"
+    source_address_prefix      = var.my_ip_cidr
+    destination_address_prefix = "*"
+  }
+
+  security_rule {
+    name                       = "Prometheus"
+    priority                   = 130
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "9090"
+    source_address_prefix      = var.my_ip_cidr
+    destination_address_prefix = "*"
+  }
+
+  security_rule {
+    name                       = "KafkaUI"
+    priority                   = 140
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "8070"
+    source_address_prefix      = var.my_ip_cidr
+    destination_address_prefix = "*"
+  }
+
+  security_rule {
+    name                       = "Mailpit"
+    priority                   = 150
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "8025"
+    source_address_prefix      = var.my_ip_cidr
+    destination_address_prefix = "*"
+  }
+
+  security_rule {
+    name                       = "Keycloak"
+    priority                   = 160
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "8091"
+    source_address_prefix      = var.my_ip_cidr
+    destination_address_prefix = "*"
+  }
+
+  tags = {
+    Project = "home-energy-tracker"
+  }
+}
+
+# --- NIC + static public IP + NSG association ---
+resource "azurerm_network_interface" "home_energy_tracker" {
+  name                = "home-energy-tracker-nic"
+  location            = azurerm_resource_group.home_energy_tracker.location
+  resource_group_name = azurerm_resource_group.home_energy_tracker.name
+
+  ip_configuration {
+    name                          = "internal"
+    subnet_id                     = azurerm_subnet.home_energy_tracker.id
+    private_ip_address_allocation = "Dynamic"
+    public_ip_address_id          = azurerm_public_ip.home_energy_tracker.id
+  }
+}
+
+resource "azurerm_network_interface_security_group_association" "home_energy_tracker" {
+  network_interface_id     = azurerm_network_interface.home_energy_tracker.id
+  network_security_group_id = azurerm_network_security_group.home_energy_tracker.id
+}
+
+# --- Ubuntu 22.04 LTS VM ---
+resource "azurerm_linux_virtual_machine" "home_energy_tracker" {
+  name                = "home-energy-tracker-vm"
+  location            = azurerm_resource_group.home_energy_tracker.location
+  resource_group_name = azurerm_resource_group.home_energy_tracker.name
+  size                = var.vm_size
+  admin_username      = var.admin_username
+
+  network_interface_ids = [
+    azurerm_network_interface.home_energy_tracker.id,
+  ]
+
+  admin_ssh_key {
+    username   = var.admin_username
+    public_key = file(var.public_key_path)
+  }
+
+  os_disk {
+    caching              = "ReadWrite"
+    storage_account_type = "StandardSSD_LRS"
+    disk_size_gb          = 30
+  }
+
+  source_image_reference {
+    publisher = "Canonical"
+    offer     = "0001-com-ubuntu-server-jammy"
+    sku       = "22_04-lts-gen2"
+    version   = "latest"
+  }
+
+  # System-assigned identity, closest Azure equivalent to the AWS SSM setup:
+  # lets Azure Run Command / Azure Monitor operate on the VM via the control
+  # plane and RBAC, without opening extra inbound network paths.
+  identity {
+    type = "SystemAssigned"
+  }
+
+  custom_data = base64encode(<<-EOF
               #!/bin/bash
               apt-get update -y
               apt-get install -y ca-certificates curl gnupg
@@ -152,24 +200,14 @@ resource "aws_instance" "home_energy_tracker" {
                 tee /etc/apt/sources.list.d/docker.list > /dev/null
               apt-get update -y
               apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
-              usermod -aG docker ubuntu
+              usermod -aG docker ${var.admin_username}
               systemctl enable docker
               systemctl start docker
               EOF
+  )
 
   tags = {
     Name    = "home-energy-tracker-prod"
-    Project = "home-energy-tracker"
-  }
-}
-
-# --- Elastic IP (keeps a stable public IP across stop/start) ---
-resource "aws_eip" "home_energy_tracker" {
-  instance = aws_instance.home_energy_tracker.id
-  domain   = "vpc"
-
-  tags = {
-    Name    = "home-energy-tracker-eip"
     Project = "home-energy-tracker"
   }
 }

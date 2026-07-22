@@ -25,14 +25,14 @@ I forked this project to practice **DevOps** on top of an already realistic, mul
 
 The application code, the Compose stack, and the observability wiring are leetjourney's original work. On top of that, I added:
 
-- **`Terraform/`** — Infrastructure as Code to provision the stack on **AWS**:
-  - `main.tf` — an EC2 instance (latest Ubuntu AMI, `t3.small`, 30 GB `gp3` root volume) with a `user_data` bootstrap script that installs **Docker** and the **Docker Compose plugin** on first boot, so the existing `docker-compose.yml` can run unmodified on the instance.
-  - A dedicated **security group** exposing only what's needed: SSH (22) and the observability/admin ports (Grafana 3000, Prometheus 9090, Kafka UI 8070, Mailpit 8025, Keycloak 8091) restricted to my own IP, with only the **API Gateway** (9000) open publicly — a basic least-privilege network boundary instead of opening everything.
-  - An `aws_key_pair` resource wired to a local SSH public key, and a `data "aws_ami"` lookup so the instance always boots the latest Ubuntu image instead of a hardcoded, staleness-prone AMI ID.
-  - `variable.tf` / `terraform.tfvars` — parameterized region (`eu-west-3` by default), instance type, and the operator's IP/CIDR, so the same configuration is reusable without editing `main.tf`.
-  - `outputs.tf` — exposes the instance's public IP, instance ID, and a ready-to-use `ssh` command after `terraform apply`.
+- **`Terraform/`** — Infrastructure as Code to provision the stack on **Azure**:
+  - `main.tf` — a resource group, virtual network/subnet, and a Linux VM (latest Ubuntu 22.04 LTS image, `Standard_B2s`, 30 GB `StandardSSD_LRS` OS disk) with `custom_data` cloud-init that installs **Docker** and the **Docker Compose plugin** on first boot, so the existing `docker-compose.yml` can run unmodified on the instance.
+  - A dedicated **network security group** exposing only what's needed: SSH (22) and the observability/admin ports (Grafana 3000, Prometheus 9090, Kafka UI 8070, Mailpit 8025, Keycloak 8091) restricted to my own IP, with only the **API Gateway** (9000) open publicly — a basic least-privilege network boundary instead of opening everything.
+  - A **static public IP** (Standard SKU) so the address stays stable across stop/start, SSH key auth wired to a local public key, and a system-assigned **managed identity** on the VM (closest Azure equivalent to AWS SSM: control-plane access via Run Command/RBAC instead of opening extra network paths).
+  - `variables.tf` / `terraform.tfvars` — parameterized region (`France Central` by default), VM size, admin username, and the operator's IP/CIDR, so the same configuration is reusable without editing `main.tf`.
+  - `outputs.tf` — exposes the VM's public IP, resource ID, and a ready-to-use `ssh` command after `terraform apply`.
 
-The practical exercise here is turning a "runs on my machine via Compose" project into something provisioned, reproducible, and deployable to a real cloud environment with `terraform init/plan/apply`, without having to touch the application code.
+The practical exercise here is turning a "runs on my machine via Compose" project into something provisioned, reproducible, and deployable to a real cloud environment with `terraform init/plan/apply`, without having to touch the application code. (This started as an AWS EC2 setup — see the `feature/infra-terraform` branch — and was ported to Azure to practice the same infra patterns against a second cloud provider.)
 
 ---
 
