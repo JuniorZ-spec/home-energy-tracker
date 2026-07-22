@@ -261,7 +261,7 @@ Use Grafana for dashboards and Prometheus for ad-hoc queries and alerting rules 
 
 ## Future improvements
 
-Already in place (see [What I added on top](#what-i-added-on-top-devops-focus)): Terraform IaC (Azure), a Jenkins CI/CD pipeline (`Jenkinsfile`) building/pushing images to ACR and deploying over SSH. Still open:
+Already in place (see [What I added on top](#what-i-added-on-top-devops-focus)): Terraform IaC (Azure), a Jenkins CI/CD pipeline (`Jenkinsfile`) building/pushing images to Docker Hub and deploying over SSH. Still open:
 
 - **End-to-end tests** — Contract or black-box tests across gateway → services → Kafka → DB
 - **Finish the Azure deployment** — `terraform apply` as soon as my subscription is reactivated, see [Current deployment status](#current-deployment-status)

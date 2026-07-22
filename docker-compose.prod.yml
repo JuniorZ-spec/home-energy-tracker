@@ -84,7 +84,7 @@ services:
       - "1025:1025"
 
   user-service:
-    image: ${ACR_REGISTRY}/home-energy-tracker/user-service:${IMAGE_TAG}
+    image: ${DOCKERHUB_NAMESPACE}/home-energy-tracker-user-service:${IMAGE_TAG}
     restart: unless-stopped
     environment:
       JAVA_TOOL_OPTIONS: "-Xms64m -Xmx160m"
@@ -99,7 +99,7 @@ services:
         condition: service_healthy
 
   device-service:
-    image: ${ACR_REGISTRY}/home-energy-tracker/device-service:${IMAGE_TAG}
+    image: ${DOCKERHUB_NAMESPACE}/home-energy-tracker-device-service:${IMAGE_TAG}
     restart: unless-stopped
     environment:
       JAVA_TOOL_OPTIONS: "-Xms64m -Xmx160m"
@@ -113,7 +113,7 @@ services:
         condition: service_healthy
 
   ingestion-service:
-    image: ${ACR_REGISTRY}/home-energy-tracker/ingestion-service:${IMAGE_TAG}
+    image: ${DOCKERHUB_NAMESPACE}/home-energy-tracker-ingestion-service:${IMAGE_TAG}
     restart: unless-stopped
     environment:
       JAVA_TOOL_OPTIONS: "-Xms64m -Xmx160m"
@@ -124,7 +124,7 @@ services:
       - kafka
 
   usage-service:
-    image: ${ACR_REGISTRY}/home-energy-tracker/usage-service:${IMAGE_TAG}
+    image: ${DOCKERHUB_NAMESPACE}/home-energy-tracker-usage-service:${IMAGE_TAG}
     restart: unless-stopped
     environment:
       JAVA_TOOL_OPTIONS: "-Xms64m -Xmx160m"
@@ -140,7 +140,7 @@ services:
       - influxdb
 
   alert-service:
-    image: ${ACR_REGISTRY}/home-energy-tracker/alert-service:${IMAGE_TAG}
+    image: ${DOCKERHUB_NAMESPACE}/home-energy-tracker-alert-service:${IMAGE_TAG}
     restart: unless-stopped
     environment:
       JAVA_TOOL_OPTIONS: "-Xms64m -Xmx160m"
@@ -159,7 +159,7 @@ services:
         condition: service_started
 
   insight-service:
-    image: ${ACR_REGISTRY}/home-energy-tracker/insight-service:${IMAGE_TAG}
+    image: ${DOCKERHUB_NAMESPACE}/home-energy-tracker-insight-service:${IMAGE_TAG}
     restart: unless-stopped
     environment:
       JAVA_TOOL_OPTIONS: "-Xms64m -Xmx160m"
@@ -167,7 +167,7 @@ services:
       - "8085:8085"
 
   api-gateway:
-    image: ${ACR_REGISTRY}/home-energy-tracker/api-gateway:${IMAGE_TAG}
+    image: ${DOCKERHUB_NAMESPACE}/home-energy-tracker-api-gateway:${IMAGE_TAG}
     restart: unless-stopped
     environment:
       JAVA_TOOL_OPTIONS: "-Xms64m -Xmx160m"

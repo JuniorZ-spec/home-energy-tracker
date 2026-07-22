@@ -2,8 +2,8 @@ pipeline {
   agent any
 
   environment {
-    // Login server of the Azure Container Registry, e.g. homeenergytracker.azurecr.io
-    ACR_REGISTRY = 'CHANGE_ME.azurecr.io'
+    // Docker Hub namespace (username or org) images are pushed under, e.g. home-energy-tracker/user-service
+    DOCKERHUB_NAMESPACE = 'CHANGE_ME'
     // Public IP of the Azure VM — from `terraform output instance_public_ip` in Terraform/
     AZURE_VM_HOST = 'CHANGE_ME'
     IMAGE_TAG = "${env.BUILD_NUMBER}"
@@ -62,16 +62,16 @@ pipeline {
           ]
 
           withCredentials([usernamePassword(
-            credentialsId: 'acr-credentials',
-            usernameVariable: 'ACR_USERNAME',
-            passwordVariable: 'ACR_PASSWORD'
+            credentialsId: 'dockerhub-credentials',
+            usernameVariable: 'DOCKERHUB_USERNAME',
+            passwordVariable: 'DOCKERHUB_PASSWORD'
           )]) {
             sh """
-              echo "${ACR_PASSWORD}" | docker login ${ACR_REGISTRY} --username ${ACR_USERNAME} --password-stdin
+              echo "${DOCKERHUB_PASSWORD}" | docker login --username ${DOCKERHUB_USERNAME} --password-stdin
             """
 
             for (svc in services) {
-              def repo = "${ACR_REGISTRY}/home-energy-tracker/${svc}"
+              def repo = "${DOCKERHUB_NAMESPACE}/home-energy-tracker-${svc}"
               retry(3) {
                 sh """
                   docker build -t ${repo}:${IMAGE_TAG} -t ${repo}:latest ${svc}
@@ -102,13 +102,13 @@ pipeline {
           """
 
           withCredentials([usernamePassword(
-            credentialsId: 'acr-credentials',
-            usernameVariable: 'ACR_USERNAME',
-            passwordVariable: 'ACR_PASSWORD'
+            credentialsId: 'dockerhub-credentials',
+            usernameVariable: 'DOCKERHUB_USERNAME',
+            passwordVariable: 'DOCKERHUB_PASSWORD'
           )]) {
             sh """
               ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 -i ${SSH_KEY} ${SSH_USER}@${AZURE_VM_HOST} '
-                echo "${ACR_PASSWORD}" | docker login ${ACR_REGISTRY} --username ${ACR_USERNAME} --password-stdin
+                echo "${DOCKERHUB_PASSWORD}" | docker login --username ${DOCKERHUB_USERNAME} --password-stdin
               '
             """
           }
@@ -116,7 +116,7 @@ pipeline {
           sh """
             ssh -o StrictHostKeyChecking=no -i ${SSH_KEY} ${SSH_USER}@${AZURE_VM_HOST} '
               export IMAGE_TAG=${IMAGE_TAG}
-              export ACR_REGISTRY=${ACR_REGISTRY}
+              export DOCKERHUB_NAMESPACE=${DOCKERHUB_NAMESPACE}
               docker compose -f docker-compose.prod.yml pull
               docker compose -f docker-compose.prod.yml up -d
             '
