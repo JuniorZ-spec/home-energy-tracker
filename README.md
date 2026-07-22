@@ -1,6 +1,5 @@
 # Home Energy Tracker
 
-juniooooooooooo
 [![Java](https://img.shields.io/badge/Java-21-orange.svg)](https://openjdk.org/)
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-4.0-green.svg)](https://spring.io/projects/spring-boot)
 [![Spring Cloud](https://img.shields.io/badge/Spring%20Cloud-2025.1.0-blue.svg)](https://spring.io/projects/spring-cloud)
@@ -33,6 +32,18 @@ The application code, the Compose stack, and the observability wiring are leetjo
   - `outputs.tf` — exposes the VM's public IP, resource ID, and a ready-to-use `ssh` command after `terraform apply`.
 
 The practical exercise here is turning a "runs on my machine via Compose" project into something provisioned, reproducible, and deployable to a real cloud environment with `terraform init/plan/apply`, without having to touch the application code. (This started as an AWS EC2 setup — see the `feature/infra-terraform` branch — and was ported to Azure to practice the same infra patterns against a second cloud provider.)
+
+### Current deployment status
+
+`terraform plan` on `feature/infra-azure` runs clean — **8 resources, 0 errors**. `terraform apply` has **not** been run yet: my Azure subscription is currently disabled/read-only (`ReadOnlyDisabledSubscription` — free trial exhausted, no payment method attached), so Azure refuses any write action until it's reactivated. No resources were created, so there's nothing running and nothing being billed.
+
+Things learned getting the plan clean, worth remembering before the next attempt:
+
+- **Azure only accepts RSA SSH keys** for `admin_ssh_key` — the ed25519 key reused from the AWS setup was rejected. Generated a dedicated RSA key (`~/.ssh/home-energy-tracker-azure-key`) instead.
+- **`az login` alone isn't enough for Terraform.** The `azurerm` provider (via Azure CLI auth) needs valid cached tokens for *both* the Microsoft Graph (`https://graph.microsoft.com/.default`) and Azure Resource Manager (`https://management.azure.com/.default`) scopes, and my tenant enforces MFA per-scope. Had to run `az login --tenant <tenant-id> --scope <scope> --use-device-code` once per scope before `terraform plan` stopped failing with `AADSTS50076`/"could not acquire access token to parse claims".
+- **`Standard_B2s` isn't free-tier eligible**; swapped to `Standard_B1s` (1 vCPU / 1 GB, 750h/month free for 12 months) to keep this at €0 once the subscription is back. 1 GB is tight for 7 JVM services + Kafka + MySQL + InfluxDB + Keycloak — expect to trim JVM heap sizes the same way the AWS `t3.small` setup needed to.
+
+**To finish the deployment later:** reactivate the subscription at [portal.azure.com](https://portal.azure.com) → Subscriptions → add a payment method / re-enable it, then re-run `terraform apply` from `Terraform/` on `feature/infra-azure`.
 
 ---
 
