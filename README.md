@@ -35,9 +35,9 @@ The practical exercise here is turning a "runs on my machine via Compose" projec
 
 ### Current deployment status
 
-`terraform plan` on `feature/infra-azure` runs clean — **8 resources, 0 errors**. `terraform apply` has **not** been run yet: my Azure subscription is currently disabled/read-only (`ReadOnlyDisabledSubscription` — free trial exhausted, no payment method attached), so Azure refuses any write action until it's reactivated. No resources were created, so there's nothing running and nothing being billed.
+`terraform plan` on `feature/infra-azure` runs clean — **8 resources, 0 errors** — so the infrastructure code itself is ready to go. `terraform apply` is queued up and will run as soon as my Azure subscription is reactivated (currently disabled after my free trial ran out). Nothing has been created yet, so nothing is running and nothing is being billed in the meantime.
 
-Things learned getting the plan clean, worth remembering before the next attempt:
+Things learned getting the plan clean, worth remembering for the actual `apply`:
 
 - **Azure only accepts RSA SSH keys** for `admin_ssh_key` — the ed25519 key reused from the AWS setup was rejected. Generated a dedicated RSA key (`~/.ssh/home-energy-tracker-azure-key`) instead.
 - **`az login` alone isn't enough for Terraform.** The `azurerm` provider (via Azure CLI auth) needs valid cached tokens for *both* the Microsoft Graph (`https://graph.microsoft.com/.default`) and Azure Resource Manager (`https://management.azure.com/.default`) scopes, and my tenant enforces MFA per-scope. Had to run `az login --tenant <tenant-id> --scope <scope> --use-device-code` once per scope before `terraform plan` stopped failing with `AADSTS50076`/"could not acquire access token to parse claims".
@@ -264,7 +264,7 @@ Use Grafana for dashboards and Prometheus for ad-hoc queries and alerting rules 
 Already in place (see [What I added on top](#what-i-added-on-top-devops-focus)): Terraform IaC (Azure), a Jenkins CI/CD pipeline (`Jenkinsfile`) building/pushing images to ACR and deploying over SSH. Still open:
 
 - **End-to-end tests** — Contract or black-box tests across gateway → services → Kafka → DB
-- **Finish the Azure deployment** — apply is blocked on a disabled subscription, see [Current deployment status](#current-deployment-status)
+- **Finish the Azure deployment** — `terraform apply` as soon as my subscription is reactivated, see [Current deployment status](#current-deployment-status)
 - **Frontend dashboard** — SPA for devices, live usage charts, alert history
 - **AuthZ hardening** — Fine-grained scopes, service-to-service tokens, policy engine
 - **Kubernetes** — Helm charts, external secrets, HPA, and Kafka/Influx operators
