@@ -35,7 +35,7 @@ The practical exercise here is turning a "runs on my machine via Compose" projec
 
 ### Current deployment status
 
-`terraform plan` on `feature/infra-azure` runs clean — **8 resources, 0 errors** — so the infrastructure code itself is ready to go. `terraform apply` is queued up and will run as soon as my Azure subscription is reactivated (currently disabled after my free trial ran out). Nothing has been created yet, so nothing is running and nothing is being billed in the meantime.
+**Infrastructure validated and ready to deploy** — `terraform plan` on `feature/infra-azure` runs clean (**8 resources, 0 errors**). `terraform apply` hasn't been run yet: it'll go out as soon as my Azure subscription is reactivated (currently disabled after my free trial ran out). Nothing has been created yet, so nothing is running and nothing is being billed in the meantime.
 
 Things learned getting the plan clean, worth remembering for the actual `apply`:
 
