@@ -173,9 +173,11 @@ Kubernetes is **not** part of this repo; deploying to K8s would be a natural ext
 ### Clone the repository
 
 ```bash
-git clone git@github.com:leetjourney/home-energy-tracker.git
+git clone git@github.com:JuniorZ-spec/home-energy-tracker.git
 cd home-energy-tracker
 ```
+
+> Original upstream (application code only, no Terraform/Jenkins additions): [leetjourney/home-energy-tracker](https://github.com/leetjourney/home-energy-tracker).
 
 ### Start infrastructure
 
@@ -259,8 +261,10 @@ Use Grafana for dashboards and Prometheus for ad-hoc queries and alerting rules 
 
 ## Future improvements
 
+Already in place (see [What I added on top](#what-i-added-on-top-devops-focus)): Terraform IaC (Azure), a Jenkins CI/CD pipeline (`Jenkinsfile`) building/pushing images to ACR and deploying over SSH. Still open:
+
 - **End-to-end tests** — Contract or black-box tests across gateway → services → Kafka → DB
-- **CI/CD** — Build matrix per service, image publish, Compose or K8s smoke tests
+- **Finish the Azure deployment** — apply is blocked on a disabled subscription, see [Current deployment status](#current-deployment-status)
 - **Frontend dashboard** — SPA for devices, live usage charts, alert history
 - **AuthZ hardening** — Fine-grained scopes, service-to-service tokens, policy engine
 - **Kubernetes** — Helm charts, external secrets, HPA, and Kafka/Influx operators
